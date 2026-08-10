@@ -242,15 +242,20 @@
     const activeCat = document.getElementById('cat-' + tier.id);
     if (activeCat) activeCat.classList.add('active-tier');
 
-    // Persist
-    localStorage.setItem('bf-tracker-tier', tier.id);
+    // Persist (obfuscated key + encoded value)
+    localStorage.setItem('_upcfg', btoa(tier.id));
   }
 
   // ── Restore saved tier (called only after login) ──
   function restoreSavedTier() {
-    const savedId = localStorage.getItem('bf-tracker-tier');
-    const saved = savedId && TIERS.find(t => t.id === savedId);
-    setTier(saved || TIERS[0]);
+    try {
+      const raw = localStorage.getItem('_upcfg');
+      const savedId = raw && atob(raw);
+      const saved = savedId && TIERS.find(t => t.id === savedId);
+      setTier(saved || TIERS[0]);
+    } catch {
+      setTier(TIERS[0]);
+    }
   }
 
   // Before login: hide sticker and clear any status so DevTools reveals nothing
