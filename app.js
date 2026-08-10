@@ -52,6 +52,8 @@
     if (hash === PASSWORD_HASH) {
       loginScreen.classList.add('hidden');
       appScreen.classList.remove('hidden');
+      restoreSavedTier();
+      sticker.style.display = '';
       initSticker();
     } else {
       loginError.textContent = '❌ Wrong password. Nice try!';
@@ -244,11 +246,15 @@
     localStorage.setItem('bf-tracker-tier', tier.id);
   }
 
-  // ── Restore on load ──
-  (function restoreSavedTier() {
+  // ── Restore saved tier (called only after login) ──
+  function restoreSavedTier() {
     const savedId = localStorage.getItem('bf-tracker-tier');
     const saved = savedId && TIERS.find(t => t.id === savedId);
     setTier(saved || TIERS[0]);
-  })();
+  }
+
+  // Before login: hide sticker and clear any status so DevTools reveals nothing
+  sticker.style.display = 'none';
+  statusText.textContent = '—';
 
 })();
