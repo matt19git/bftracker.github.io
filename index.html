@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BF Tracker 💖</title>
+  <meta name="description" content="The official boyfriend behavior tracker. GF eyes only.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ═══════════════════ LOGIN SCREEN ═══════════════════ -->
+  <div id="login-screen" class="login-screen">
+    <div class="login-bg-shapes">
+      <div class="shape shape-1"></div>
+      <div class="shape shape-2"></div>
+      <div class="shape shape-3"></div>
+    </div>
+    <div class="login-card">
+      <div class="login-lock-icon">🔐</div>
+      <h1 class="login-title">BF Tracker</h1>
+      <p class="login-subtitle">Authorized Girlfriend Access Only</p>
+      <form id="login-form" autocomplete="off">
+        <div class="input-group">
+          <label for="password-input">Secret Passcode</label>
+          <input type="password" id="password-input" placeholder="Enter the magic words..." required>
+        </div>
+        <div id="login-error" class="login-error"></div>
+        <button type="submit" id="login-btn" class="btn btn-login">Unlock 💕</button>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════════ MAIN TRACKER ═══════════════════ -->
+  <div id="app-screen" class="app-screen hidden">
+
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-brand">💖 BF Tracker</div>
+      <div class="header-status">
+        Current Status: <span id="status-text">Perfect Angel</span>
+      </div>
+    </header>
+
+    <!-- Tracker Body -->
+    <main class="tracker-body">
+
+
+      <!-- The thick bordered column -->
+      <div class="tracker-column" id="tracker-column">
+
+        <div class="category" data-tier="perfect-angel" id="cat-perfect-angel">
+          <div class="category-inner tier-perfect-angel">
+            <div class="category-label">
+              <span class="category-emoji">😇</span>
+              <div class="category-text">
+                <h2>Perfect Angel</h2>
+                <p>Halo status. Deserves all the kisses.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="category" data-tier="good-boy" id="cat-good-boy">
+          <div class="category-inner tier-good-boy">
+            <div class="category-label">
+              <span class="category-emoji">🐶</span>
+              <div class="category-text">
+                <h2>Good Boy</h2>
+                <p>Golden retriever energy. Doing great.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="category" data-tier="adequate" id="cat-adequate">
+          <div class="category-inner tier-adequate">
+            <div class="category-label">
+              <span class="category-emoji">😐</span>
+              <div class="category-text">
+                <h2>Adequate</h2>
+                <p>The bare minimum has been met.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="category" data-tier="thin-ice" id="cat-thin-ice">
+          <div class="category-inner tier-thin-ice">
+            <div class="category-label">
+              <span class="category-emoji">😰</span>
+              <div class="category-text">
+                <h2>Thin Ice</h2>
+                <p>One wrong move... tread carefully.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="category" data-tier="jail" id="cat-jail">
+          <div class="category-inner tier-jail">
+            <div class="category-label">
+              <span class="category-emoji">⛓️</span>
+              <div class="category-text">
+                <h2>Jail</h2>
+                <p>Behind bars. Sentence is being served.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="category" data-tier="death-row" id="cat-death-row">
+          <div class="category-inner tier-death-row">
+            <div class="category-label">
+              <span class="category-emoji">💀</span>
+              <div class="category-text">
+                <h2>Death Row</h2>
+                <p>Maximum penalty. Boba required ASAP.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /tracker-column -->
+
+      <!-- The Draggable Sticker (positioned absolutely, moves freely) -->
+      <div id="bf-sticker" class="bf-sticker">
+        <div class="sticker-ring">
+          <!-- Dummy placeholder image — replace src with your actual photo -->
+          <img id="sticker-photo" class="sticker-photo" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Crect fill='%23ddd' width='100' height='100' rx='50'/%3E%3Ctext x='50' y='58' text-anchor='middle' font-size='14' fill='%23888'%3EBF%3C/text%3E%3C/svg%3E" alt="BF Photo">
+          <div id="sticker-face-overlay" class="sticker-face-overlay">😇</div>
+        </div>
+        <div class="sticker-name-tag" id="sticker-name-tag">Perfect Angel</div>
+      </div>
+
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
