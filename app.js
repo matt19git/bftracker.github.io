@@ -18,12 +18,12 @@
   }
 
   const TIERS = [
-    { id: 'perfect-angel', name: 'Perfect Angel', face: '😇', color: '#c4b5fd', borderColor: '#a78bfa' },
-    { id: 'good-boy',      name: 'Good Boy',      face: '🐶', color: '#6ee7b7', borderColor: '#34d399' },
-    { id: 'adequate',      name: 'Adequate',      face: '😐', color: '#fcd34d', borderColor: '#fbbf24' },
-    { id: 'thin-ice',      name: 'Thin Ice',      face: '😰', color: '#fdba74', borderColor: '#fb923c' },
-    { id: 'jail',          name: 'Jail',          face: '⛓️', color: '#fca5a5', borderColor: '#f87171' },
-    { id: 'death-row',     name: 'Death Row',     face: '💀', color: '#f87171', borderColor: '#ef4444' },
+    { id: 'perfect-angel', name: 'Perfect Angel', face: '😇', image: 'images/1.png', color: '#c4b5fd', borderColor: '#a78bfa' },
+    { id: 'good-boy',      name: 'Good Boy',      face: '🐶', image: 'images/2.png', color: '#6ee7b7', borderColor: '#34d399' },
+    { id: 'adequate',      name: 'Adequate',      face: '😐', image: 'images/3.png', color: '#fcd34d', borderColor: '#fbbf24' },
+    { id: 'thin-ice',      name: 'Thin Ice',      face: '😰', image: 'images/4.png', color: '#fdba74', borderColor: '#fb923c' },
+    { id: 'jail',          name: 'Jail',          face: '⛓️', image: 'images/5.png', color: '#fca5a5', borderColor: '#f87171' },
+    { id: 'death-row',     name: 'Death Row',     face: '💀', image: 'images/6.png', color: '#f87171', borderColor: '#ef4444' },
   ];
 
   // ── DOM Refs ──
@@ -34,7 +34,8 @@
   const loginError    = document.getElementById('login-error');
   const statusText    = document.getElementById('status-text');
   const sticker       = document.getElementById('bf-sticker');
-  const faceOverlay   = document.getElementById('sticker-face-overlay');
+  const stickerPhoto  = document.getElementById('sticker-photo');
+
   const nameTag       = document.getElementById('sticker-name-tag');
   const stickerRing   = sticker.querySelector('.sticker-ring');
   const column        = document.getElementById('tracker-column');
@@ -217,12 +218,9 @@
   function setTier(tier) {
     currentTier = tier;
 
-    // Face emoji with bounce
-    faceOverlay.textContent = tier.face;
-    sticker.classList.remove('face-change');
-    void sticker.offsetWidth;
-    sticker.classList.add('face-change');
-    setTimeout(() => sticker.classList.remove('face-change'), 300);
+    // Swap sticker photo to the tier's image
+    stickerPhoto.src = tier.image;
+    stickerPhoto.alt = tier.name;
 
     // Name tag
     nameTag.textContent = tier.name;
