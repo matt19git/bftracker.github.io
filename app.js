@@ -61,8 +61,33 @@
   loginForm.addEventListener('submit', async function (e) {
     e.preventDefault();
     const pw = passwordInput.value;
-    const hash = await hashPassword(pw);
-    if (hash === PASSWORD_HASH) {
+    
+    let authenticated = false;
+
+    // Try Supabase Auth first
+    if (supabase) {
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: 'gf@bftracker.com',
+          password: pw
+        });
+        if (data && data.session && !error) {
+          authenticated = true;
+        }
+      } catch (err) {
+        console.warn('Supabase Auth error:', err);
+      }
+    }
+
+    // Fallback local hash check if Supabase offline or auth not matched
+    if (!authenticated) {
+      const hash = await hashPassword(pw);
+      if (hash === PASSWORD_HASH) {
+        authenticated = true;
+      }
+    }
+
+    if (authenticated) {
       loginScreen.classList.add('hidden');
       appScreen.classList.remove('hidden');
       sticker.style.display = '';
