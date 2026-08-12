@@ -68,7 +68,7 @@
     if (supabase) {
       try {
         const { data, error } = await supabase.auth.signInWithPassword({
-          email: 'gf@bftracker.com',
+          email: 'matthew.sadowski1@gmail.com',
           password: pw
         });
         if (data && data.session && !error) {
