@@ -40,10 +40,22 @@
   const stickerRing   = sticker.querySelector('.sticker-ring');
   const column        = document.getElementById('tracker-column');
 
+  // ── Supabase Configuration ──
+  const SUPABASE_URL = 'https://nqnhzcxyfijlkfmutaip.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xbmh6Y3h5ZmlqbGtmbXV0YWlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0ODY2NTEsImV4cCI6MjEwMjA2MjY1MX0.uGK-tT2R1DHH7vESz8KqsUT1ldiK1kgY_CYAuLiiVt4';
+  
+  let supabase = null;
+  if (window.supabase && window.supabase.createClient) {
+    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  }
+
   let currentTier = TIERS[0];
+  let currentPosX = 0.5;
+  let currentPosY = 0.1;
   let isDragging  = false;
   let dragOffsetX = 0;
   let dragOffsetY = 0;
+  let isCustomPosition = false;
 
   // ── Login ──
   loginForm.addEventListener('submit', async function (e) {
@@ -53,9 +65,9 @@
     if (hash === PASSWORD_HASH) {
       loginScreen.classList.add('hidden');
       appScreen.classList.remove('hidden');
-      restoreSavedTier();
       sticker.style.display = '';
-      initSticker();
+      await initCloudState();
+      setupRealtimeSubscription();
     } else {
       loginError.textContent = '❌ Wrong password. Nice try!';
       loginError.classList.remove('shake');
@@ -66,19 +78,163 @@
     }
   });
 
+  // ═══════════════════════════════════════════════════════
+  // SUPABASE CLOUD SYNC & POSITIONING
+  // ═══════════════════════════════════════════════════════
+
+  function getRelativePosition() {
+    const colRect = column.getBoundingClientRect();
+    const stickerRect = sticker.getBoundingClientRect();
+    const centerX = (stickerRect.left + stickerRect.width / 2) - colRect.left;
+    const centerY = (stickerRect.top + stickerRect.height / 2) - colRect.top;
+    return {
+      x: Math.max(0, Math.min(1, centerX / colRect.width)),
+      y: Math.max(0, Math.min(1, centerY / colRect.height))
+    };
+  }
+
+  function applyRelativePosition(xPct, yPct, animate = false) {
+    const colRect = column.getBoundingClientRect();
+    const stickerW = sticker.offsetWidth || 90;
+    const stickerH = sticker.offsetHeight || 90;
+
+    const targetX = colRect.left + (xPct * colRect.width) - (stickerW / 2);
+    const targetY = colRect.top + (yPct * colRect.height) - (stickerH / 2);
+
+    if (animate) {
+      sticker.style.transition = 'left 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), top 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
+    } else {
+      sticker.style.transition = 'none';
+    }
+
+    sticker.style.left = targetX + 'px';
+    sticker.style.top  = targetY + 'px';
+
+    if (animate) {
+      setTimeout(() => { sticker.style.transition = ''; }, 450);
+    }
+  }
+
+  async function saveStateToCloud(tierId, xPct, yPct) {
+    // 1. Local backup
+    localStorage.setItem('_upcfg', btoa(JSON.stringify({ tierId, xPct, yPct })));
+
+    // 2. Cloud save via Supabase
+    if (!supabase) return;
+    try {
+      await supabase
+        .from('tracker_state')
+        .update({
+          tier_id: tierId,
+          pos_x_pct: xPct,
+          pos_y_pct: yPct,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', 1);
+    } catch (err) {
+      console.warn('Supabase save error:', err);
+    }
+  }
+
+  async function initCloudState() {
+    let loadedTier = null;
+    let loadedX = null;
+    let loadedY = null;
+
+    // Try fetching from Supabase first
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('tracker_state')
+          .select('tier_id, pos_x_pct, pos_y_pct')
+          .eq('id', 1)
+          .single();
+
+        if (data && !error) {
+          loadedTier = TIERS.find(t => t.id === data.tier_id);
+          loadedX = data.pos_x_pct;
+          loadedY = data.pos_y_pct;
+        }
+      } catch (err) {
+        console.warn('Supabase load error:', err);
+      }
+    }
+
+    // Fallback to local storage if cloud missing
+    if (!loadedTier) {
+      try {
+        const raw = localStorage.getItem('_upcfg');
+        if (raw) {
+          const parsed = JSON.parse(atob(raw));
+          if (typeof parsed === 'object') {
+            loadedTier = TIERS.find(t => t.id === parsed.tierId);
+            loadedX = parsed.xPct;
+            loadedY = parsed.yPct;
+          } else {
+            loadedTier = TIERS.find(t => t.id === parsed);
+          }
+        }
+      } catch {
+        // Ignored
+      }
+    }
+
+    const tierToSet = loadedTier || TIERS[0];
+    setTier(tierToSet, false);
+
+    requestAnimationFrame(() => {
+      if (typeof loadedX === 'number' && typeof loadedY === 'number') {
+        currentPosX = loadedX;
+        currentPosY = loadedY;
+        isCustomPosition = true;
+        applyRelativePosition(loadedX, loadedY, false);
+      } else {
+        snapToCurrentTier(false);
+      }
+    });
+  }
+
+  function setupRealtimeSubscription() {
+    if (!supabase) return;
+
+    supabase
+      .channel('public:tracker_state')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'tracker_state', filter: 'id=eq.1' },
+        (payload) => {
+          if (isDragging) return; // Don't snap while user is dragging on this device
+          const newRow = payload.new;
+          if (!newRow) return;
+
+          const newTier = TIERS.find(t => t.id === newRow.tier_id);
+          if (newTier) {
+            setTier(newTier, false);
+          }
+
+          if (typeof newRow.pos_x_pct === 'number' && typeof newRow.pos_y_pct === 'number') {
+            currentPosX = newRow.pos_x_pct;
+            currentPosY = newRow.pos_y_pct;
+            isCustomPosition = true;
+            applyRelativePosition(currentPosX, currentPosY, true);
+          }
+        }
+      )
+      .subscribe();
+  }
+
 
   // ═══════════════════════════════════════════════════════
   // STICKER DRAG LOGIC
-  //
-  // The sticker is position:fixed, so left/top are viewport
-  // coordinates — same as getBoundingClientRect(). This
-  // means you can drag it ANYWHERE on screen and the tier
-  // detection always works correctly.
   // ═══════════════════════════════════════════════════════
 
   function initSticker() {
     requestAnimationFrame(() => {
-      snapToCurrentTier(false);
+      if (isCustomPosition) {
+        applyRelativePosition(currentPosX, currentPosY, false);
+      } else {
+        snapToCurrentTier(false);
+      }
     });
   }
 
@@ -119,17 +275,21 @@
     document.removeEventListener('pointermove', onDragMove);
     document.removeEventListener('pointerup', onDragEnd);
 
-    // Just detect the final tier — sticker stays where you dropped it
+    // Final tier detection
     detectTierUnderSticker();
+
+    // Save relative position & tier to Supabase
+    const relPos = getRelativePosition();
+    currentPosX = relPos.x;
+    currentPosY = relPos.y;
+    isCustomPosition = true;
+
+    saveStateToCloud(currentTier.id, relPos.x, relPos.y);
   }
 
 
   // ═══════════════════════════════════════════════════════
   // TIER DETECTION
-  //
-  // Uses the sticker's vertical center (viewport Y) to
-  // determine which category it's over. If it's not
-  // directly over any category, picks the closest one.
   // ═══════════════════════════════════════════════════════
 
   function detectTierUnderSticker() {
@@ -163,17 +323,13 @@
     }
 
     if (detectedTier && detectedTier.id !== currentTier.id) {
-      setTier(detectedTier);
+      setTier(detectedTier, true);
     }
   }
 
 
   // ═══════════════════════════════════════════════════════
   // SNAP TO TIER
-  //
-  // Centers the sticker inside the active category.
-  // Because both sticker (fixed) and getBoundingClientRect
-  // use viewport coords, the math is straightforward.
   // ═══════════════════════════════════════════════════════
 
   function snapToCurrentTier(animate) {
@@ -181,8 +337,8 @@
     if (!tierEl) return;
 
     const catRect  = tierEl.getBoundingClientRect();
-    const stickerW = sticker.offsetWidth;
-    const stickerH = sticker.offsetHeight;
+    const stickerW = sticker.offsetWidth || 90;
+    const stickerH = sticker.offsetHeight || 90;
 
     const targetX = catRect.left + (catRect.width / 2) - (stickerW / 2);
     const targetY = catRect.top  + (catRect.height / 2) - (stickerH / 2);
@@ -204,7 +360,11 @@
   // Keep sticker aligned on scroll or resize
   function onLayoutChange() {
     if (!appScreen.classList.contains('hidden') && !isDragging) {
-      snapToCurrentTier(false);
+      if (isCustomPosition) {
+        applyRelativePosition(currentPosX, currentPosY, false);
+      } else {
+        snapToCurrentTier(false);
+      }
     }
   }
   window.addEventListener('resize', onLayoutChange);
@@ -212,10 +372,10 @@
 
 
   // ═══════════════════════════════════════════════════════
-  // SET TIER (updates face, colors, highlights)
+  // SET TIER (updates photo, colors, highlights)
   // ═══════════════════════════════════════════════════════
 
-  function setTier(tier) {
+  function setTier(tier, triggerSave = false) {
     currentTier = tier;
 
     // Swap sticker photo to the tier's image
@@ -240,19 +400,9 @@
     const activeCat = document.getElementById('cat-' + tier.id);
     if (activeCat) activeCat.classList.add('active-tier');
 
-    // Persist (obfuscated key + encoded value)
-    localStorage.setItem('_upcfg', btoa(tier.id));
-  }
-
-  // ── Restore saved tier (called only after login) ──
-  function restoreSavedTier() {
-    try {
-      const raw = localStorage.getItem('_upcfg');
-      const savedId = raw && atob(raw);
-      const saved = savedId && TIERS.find(t => t.id === savedId);
-      setTier(saved || TIERS[0]);
-    } catch {
-      setTier(TIERS[0]);
+    if (triggerSave) {
+      const relPos = getRelativePosition();
+      saveStateToCloud(tier.id, relPos.x, relPos.y);
     }
   }
 
