@@ -199,12 +199,6 @@
     const tierToSet = loadedTier || TIERS[0];
     setTier(tierToSet, false);
 
-    if (typeof loadedX === 'number' && typeof loadedY === 'number') {
-      lastNotifiedTierId = tierToSet.id;
-      lastNotifiedX = loadedX;
-      lastNotifiedY = loadedY;
-    }
-
     requestAnimationFrame(() => {
       if (typeof loadedX === 'number' && typeof loadedY === 'number') {
         currentPosX = loadedX;
