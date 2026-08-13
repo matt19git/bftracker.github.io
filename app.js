@@ -259,23 +259,23 @@
   sticker.addEventListener('pointerdown', onDragStart);
 
   function onDragStart(e) {
-    if (e.button !== undefined && e.button !== 0) return;
+    e.preventDefault();
     isDragging = true;
     sticker.classList.add('is-dragging');
+    sticker.setPointerCapture(e.pointerId);
 
     // Record where inside the sticker the user grabbed
     const rect = sticker.getBoundingClientRect();
     dragOffsetX = e.clientX - rect.left;
     dragOffsetY = e.clientY - rect.top;
 
-    window.addEventListener('pointermove', onDragMove, { passive: false });
-    window.addEventListener('pointerup', onDragEnd);
-    window.addEventListener('pointercancel', onDragEnd);
+    document.addEventListener('pointermove', onDragMove);
+    document.addEventListener('pointerup', onDragEnd);
   }
 
   function onDragMove(e) {
     if (!isDragging) return;
-    if (e.cancelable) e.preventDefault();
+    e.preventDefault();
 
     // Position:fixed means left/top = viewport coords
     sticker.style.left = (e.clientX - dragOffsetX) + 'px';
@@ -289,9 +289,8 @@
     if (!isDragging) return;
     isDragging = false;
     sticker.classList.remove('is-dragging');
-    window.removeEventListener('pointermove', onDragMove);
-    window.removeEventListener('pointerup', onDragEnd);
-    window.removeEventListener('pointercancel', onDragEnd);
+    document.removeEventListener('pointermove', onDragMove);
+    document.removeEventListener('pointerup', onDragEnd);
 
     // Final tier detection
     detectTierUnderSticker();
