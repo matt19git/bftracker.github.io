@@ -68,47 +68,37 @@
     const newTier = TIERS.find(t => t.id === newTierId) || currentTier;
     const oldTier = TIERS.find(t => t.id === lastNotifiedTierId);
 
-    const isTierChanged = oldTier && oldTier.id !== newTier.id;
-    const xDiff = lastNotifiedX !== null ? Math.abs(xPct - lastNotifiedX) : 1;
-    const yDiff = lastNotifiedY !== null ? Math.abs(yPct - lastNotifiedY) : 1;
-
-    // Skip duplicate if no tier change and position shifted less than 0.5%
-    if (lastNotifiedTierId !== null && !isTierChanged && xDiff < 0.005 && yDiff < 0.005) {
-      return;
-    }
+    const isTierChanged = !!(oldTier && oldTier.id !== newTier.id);
 
     lastNotifiedTierId = newTier.id;
     lastNotifiedX = xPct;
     lastNotifiedY = yPct;
 
-    const categoryText = isTierChanged
-      ? `🚨 **CATEGORY CHANGED!**\n**From:** ${oldTier ? oldTier.name : 'Unknown'} ➔ **To:** ${newTier.name} ${newTier.face}`
-      : `📌 **Category:** ${newTier.name} ${newTier.face} *(Position Adjusted)*`;
-
     const xFormatted = (xPct * 100).toFixed(1) + '%';
     const yFormatted = (yPct * 100).toFixed(1) + '%';
-    const timeStr = new Date().toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' });
+    const timeStr = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit' });
 
     const colorHex = newTier.borderColor.replace('#', '');
     const colorInt = parseInt(colorHex, 16) || 15509673;
 
     const payload = {
       username: 'BF Tracker 💖',
-      avatar_url: 'https://raw.githubusercontent.com/matt19git/bftracker.github.io/main/images/1.png',
       embeds: [
         {
           title: isTierChanged ? '🚨 Category Updated!' : '📍 Sticker Repositioned',
-          description: categoryText,
+          description: isTierChanged
+            ? `**Changed from:** ${oldTier.name} ➔ **To:** ${newTier.name} ${newTier.face}`
+            : `**Category:** ${newTier.name} ${newTier.face} *(Shifted position)*`,
           color: colorInt,
           fields: [
             {
-              name: 'Absolute Position',
-              value: `\`X: ${xFormatted}\` | \`Y: ${yFormatted}\``,
+              name: 'Category',
+              value: newTier.name,
               inline: true
             },
             {
-              name: 'Current Status',
-              value: `**${newTier.name}**`,
+              name: 'Position (X / Y)',
+              value: `X: ${xFormatted} | Y: ${yFormatted}`,
               inline: true
             }
           ],
@@ -120,13 +110,16 @@
     };
 
     try {
-      await fetch(DISCORD_WEBHOOK_URL, {
+      const res = await fetch(DISCORD_WEBHOOK_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
+      if (!res.ok) {
+        console.warn('Discord webhook returned status:', res.status);
+      }
     } catch (err) {
-      console.warn('Discord webhook error:', err);
+      console.warn('Discord webhook fetch error:', err);
     }
   }
 
