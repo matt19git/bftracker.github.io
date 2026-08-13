@@ -130,10 +130,10 @@
     if (authenticated) {
       loginScreen.classList.add('hidden');
       appScreen.classList.remove('hidden');
-      sticker.style.display = '';
-      sticker.style.visibility = 'hidden'; // hide until positioned
+      // sticker stays display:none until fully positioned below
       await initCloudState();
-      sticker.style.visibility = '';       // reveal after positioned
+      sticker.style.display = '';      // already positioned — no flash
+      sticker.style.visibility = '';   // clear any leftover
       setupRealtimeSubscription();
     } else {
       loginError.textContent = '❌ Wrong password. Nice try!';
