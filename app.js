@@ -41,9 +41,9 @@
   const column        = document.getElementById('tracker-column');
 
   // ── Supabase Configuration ──
-  const SUPABASE_URL = 'https://nqnhzcxyfijlkfmutaip.supabase.co';
+  const SUPABASE_URL    = 'https://nqnhzcxyfijlkfmutaip.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xbmh6Y3h5ZmlqbGtmbXV0YWlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0ODY2NTEsImV4cCI6MjEwMjA2MjY1MX0.uGK-tT2R1DHH7vESz8KqsUT1ldiK1kgY_CYAuLiiVt4';
-  const DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/1537260142377046027/Ow80xGskx1Yrlz-NhJQQYyH7pjYzy6LIaghOZKHbkGvDClfHJnKaXPXFSTowElR-KzAt';
+  const EDGE_FN_URL     = 'https://nqnhzcxyfijlkfmutaip.supabase.co/functions/v1/notify-discord';
 
   let supabase = null;
   if (window.supabase && window.supabase.createClient) {
@@ -63,29 +63,34 @@
   let lastNotifiedY = null;
 
   async function sendDiscordNotification(newTierId, xPct, yPct) {
-    if (!DISCORD_WEBHOOK_URL) return;
+    if (!supabase) return;
 
     const newTier = TIERS.find(t => t.id === newTierId) || currentTier;
     const oldTier = TIERS.find(t => t.id === lastNotifiedTierId);
-
-    const isTierChanged = !!(oldTier && oldTier.id !== newTier.id);
 
     lastNotifiedTierId = newTier.id;
     lastNotifiedX = xPct;
     lastNotifiedY = yPct;
 
-    const xFormatted = (xPct * 100).toFixed(1) + '%';
-    const yFormatted = (yPct * 100).toFixed(1) + '%';
-
-    const messageContent = isTierChanged
-      ? `🚨 **BF TRACKER ALERT: CATEGORY CHANGED!**\nMoved from **${oldTier ? oldTier.name : 'Unknown'}** ➔ **${newTier.name}** ${newTier.face}\n📍 **Position:** X: \`${xFormatted}\` | Y: \`${yFormatted}\``
-      : `📍 **BF Tracker Alert: Sticker Repositioned**\n**Category:** ${newTier.name} ${newTier.face}\n📍 **Position:** X: \`${xFormatted}\` | Y: \`${yFormatted}\``;
-
     try {
-      await fetch(DISCORD_WEBHOOK_URL, {
+      // Get the current auth session token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return; // Not logged in, skip
+
+      await fetch(EDGE_FN_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: messageContent })
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+          'apikey': SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({
+          tierName:    newTier.name,
+          tierEmoji:   newTier.face,
+          oldTierName: oldTier ? oldTier.name : null,
+          posX: xPct,
+          posY: yPct,
+        })
       });
     } catch (err) {
       console.warn('Discord notification error:', err);
