@@ -509,6 +509,7 @@ body {
   justify-content: center;
   position: relative;
   overflow: hidden;
+  pointer-events: none;
   box-shadow:
     0 0 0 3px rgba(236, 72, 153, 0.2),
     0 6px 24px rgba(0, 0, 0, 0.4);
@@ -520,6 +521,7 @@ body {
   height: 100%;
   object-fit: cover;
   border-radius: 50%;
+  pointer-events: none;
 }
 
 .sticker-face-overlay {
