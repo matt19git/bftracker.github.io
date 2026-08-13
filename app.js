@@ -76,50 +76,19 @@
 
     const xFormatted = (xPct * 100).toFixed(1) + '%';
     const yFormatted = (yPct * 100).toFixed(1) + '%';
-    const timeStr = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit' });
 
-    const colorHex = newTier.borderColor.replace('#', '');
-    const colorInt = parseInt(colorHex, 16) || 15509673;
-
-    const payload = {
-      username: 'BF Tracker 💖',
-      embeds: [
-        {
-          title: isTierChanged ? '🚨 Category Updated!' : '📍 Sticker Repositioned',
-          description: isTierChanged
-            ? `**Changed from:** ${oldTier.name} ➔ **To:** ${newTier.name} ${newTier.face}`
-            : `**Category:** ${newTier.name} ${newTier.face} *(Shifted position)*`,
-          color: colorInt,
-          fields: [
-            {
-              name: 'Category',
-              value: newTier.name,
-              inline: true
-            },
-            {
-              name: 'Position (X / Y)',
-              value: `X: ${xFormatted} | Y: ${yFormatted}`,
-              inline: true
-            }
-          ],
-          footer: {
-            text: `BF Tracker • ${timeStr}`
-          }
-        }
-      ]
-    };
+    const messageContent = isTierChanged
+      ? `🚨 **BF TRACKER ALERT: CATEGORY CHANGED!**\nMoved from **${oldTier ? oldTier.name : 'Unknown'}** ➔ **${newTier.name}** ${newTier.face}\n📍 **Position:** X: \`${xFormatted}\` | Y: \`${yFormatted}\``
+      : `📍 **BF Tracker Alert: Sticker Repositioned**\n**Category:** ${newTier.name} ${newTier.face}\n📍 **Position:** X: \`${xFormatted}\` | Y: \`${yFormatted}\``;
 
     try {
-      const res = await fetch(DISCORD_WEBHOOK_URL, {
+      await fetch(DISCORD_WEBHOOK_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({ content: messageContent })
       });
-      if (!res.ok) {
-        console.warn('Discord webhook returned status:', res.status);
-      }
     } catch (err) {
-      console.warn('Discord webhook fetch error:', err);
+      console.warn('Discord notification error:', err);
     }
   }
 
