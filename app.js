@@ -133,6 +133,8 @@
   }
 
   async function saveStateToCloud(tierId, xPct, yPct) {
+    lastSaveTime = Date.now();
+
     // 1. Local backup
     localStorage.setItem('_upcfg', btoa(JSON.stringify({ tierId, xPct, yPct })));
 
@@ -211,6 +213,8 @@
     });
   }
 
+  let lastSaveTime = 0;
+
   function setupRealtimeSubscription() {
     if (!supabase) return;
 
@@ -220,7 +224,9 @@
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'tracker_state', filter: 'id=eq.1' },
         (payload) => {
-          if (isDragging) return; // Don't snap while user is dragging on this device
+          // Ignore realtime echo-backs from our own saves (within 2 seconds)
+          if (Date.now() - lastSaveTime < 2000) return;
+          if (isDragging) return;
           const newRow = payload.new;
           if (!newRow) return;
 
