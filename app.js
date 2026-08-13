@@ -131,7 +131,9 @@
       loginScreen.classList.add('hidden');
       appScreen.classList.remove('hidden');
       sticker.style.display = '';
+      sticker.style.visibility = 'hidden'; // hide until positioned
       await initCloudState();
+      sticker.style.visibility = '';       // reveal after positioned
       setupRealtimeSubscription();
     } else {
       loginError.textContent = '❌ Wrong password. Nice try!';
@@ -256,15 +258,18 @@
       lastNotifiedY = loadedY;
     }
 
-    requestAnimationFrame(() => {
-      if (typeof loadedX === 'number' && typeof loadedY === 'number') {
-        currentPosX = loadedX;
-        currentPosY = loadedY;
-        isCustomPosition = true;
-        applyRelativePosition(loadedX, loadedY, false);
-      } else {
-        snapToCurrentTier(false);
-      }
+    await new Promise(resolve => {
+      requestAnimationFrame(() => {
+        if (typeof loadedX === 'number' && typeof loadedY === 'number') {
+          currentPosX = loadedX;
+          currentPosY = loadedY;
+          isCustomPosition = true;
+          applyRelativePosition(loadedX, loadedY, false);
+        } else {
+          snapToCurrentTier(false);
+        }
+        resolve();
+      });
     });
   }
 
