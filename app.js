@@ -43,7 +43,8 @@
   // ── Supabase Configuration ──
   const SUPABASE_URL = 'https://nqnhzcxyfijlkfmutaip.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xbmh6Y3h5ZmlqbGtmbXV0YWlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0ODY2NTEsImV4cCI6MjEwMjA2MjY1MX0.uGK-tT2R1DHH7vESz8KqsUT1ldiK1kgY_CYAuLiiVt4';
-  
+  const DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/1537260142377046027/Ow80xGskx1Yrlz-NhJQQYyH7pjYzy6LIaghOZKHbkGvDClfHJnKaXPXFSTowElR-KzAt';
+
   let supabase = null;
   if (window.supabase && window.supabase.createClient) {
     supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -56,6 +57,78 @@
   let dragOffsetX = 0;
   let dragOffsetY = 0;
   let isCustomPosition = false;
+
+  let lastNotifiedTierId = null;
+  let lastNotifiedX = null;
+  let lastNotifiedY = null;
+
+  async function sendDiscordNotification(newTierId, xPct, yPct) {
+    if (!DISCORD_WEBHOOK_URL) return;
+
+    const newTier = TIERS.find(t => t.id === newTierId) || currentTier;
+    const oldTier = TIERS.find(t => t.id === lastNotifiedTierId);
+
+    const isTierChanged = oldTier && oldTier.id !== newTier.id;
+    const xDiff = lastNotifiedX !== null ? Math.abs(xPct - lastNotifiedX) : 1;
+    const yDiff = lastNotifiedY !== null ? Math.abs(yPct - lastNotifiedY) : 1;
+
+    // Skip duplicate if no tier change and position shifted less than 0.5%
+    if (lastNotifiedTierId !== null && !isTierChanged && xDiff < 0.005 && yDiff < 0.005) {
+      return;
+    }
+
+    lastNotifiedTierId = newTier.id;
+    lastNotifiedX = xPct;
+    lastNotifiedY = yPct;
+
+    const categoryText = isTierChanged
+      ? `🚨 **CATEGORY CHANGED!**\n**From:** ${oldTier ? oldTier.name : 'Unknown'} ➔ **To:** ${newTier.name} ${newTier.face}`
+      : `📌 **Category:** ${newTier.name} ${newTier.face} *(Position Adjusted)*`;
+
+    const xFormatted = (xPct * 100).toFixed(1) + '%';
+    const yFormatted = (yPct * 100).toFixed(1) + '%';
+    const timeStr = new Date().toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' });
+
+    const colorHex = newTier.borderColor.replace('#', '');
+    const colorInt = parseInt(colorHex, 16) || 15509673;
+
+    const payload = {
+      username: 'BF Tracker 💖',
+      avatar_url: 'https://raw.githubusercontent.com/matt19git/bftracker.github.io/main/images/1.png',
+      embeds: [
+        {
+          title: isTierChanged ? '🚨 Category Updated!' : '📍 Sticker Repositioned',
+          description: categoryText,
+          color: colorInt,
+          fields: [
+            {
+              name: 'Absolute Position',
+              value: `\`X: ${xFormatted}\` | \`Y: ${yFormatted}\``,
+              inline: true
+            },
+            {
+              name: 'Current Status',
+              value: `**${newTier.name}**`,
+              inline: true
+            }
+          ],
+          footer: {
+            text: `BF Tracker • ${timeStr}`
+          }
+        }
+      ]
+    };
+
+    try {
+      await fetch(DISCORD_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    } catch (err) {
+      console.warn('Discord webhook error:', err);
+    }
+  }
 
   // ── Login ──
   loginForm.addEventListener('submit', async function (e) {
@@ -144,7 +217,10 @@
     // 1. Local backup
     localStorage.setItem('_upcfg', btoa(JSON.stringify({ tierId, xPct, yPct })));
 
-    // 2. Cloud save via Supabase
+    // 2. Send Discord Notification
+    sendDiscordNotification(tierId, xPct, yPct);
+
+    // 3. Cloud save via Supabase
     if (!supabase) return;
     try {
       await supabase
@@ -206,6 +282,12 @@
 
     const tierToSet = loadedTier || TIERS[0];
     setTier(tierToSet, false);
+
+    if (typeof loadedX === 'number' && typeof loadedY === 'number') {
+      lastNotifiedTierId = tierToSet.id;
+      lastNotifiedX = loadedX;
+      lastNotifiedY = loadedY;
+    }
 
     requestAnimationFrame(() => {
       if (typeof loadedX === 'number' && typeof loadedY === 'number') {
